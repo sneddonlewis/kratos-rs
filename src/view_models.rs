@@ -1,5 +1,11 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct User {
+    pub username: String,
+    pub password: String,
+}
+
 pub struct Account {
     pub card_number: String,
     pub pin: String,
@@ -45,3 +51,4 @@ pub struct AccountDetailView {
     pub card_number: String,
     pub balance: f64,
 }
+

@@ -1,10 +1,12 @@
 mod account_repo;
 mod auth;
 mod middleware;
+mod user_repo;
 mod view_models;
 
 use crate::account_repo::{AccountRepoImpl, DynAccountRepo};
 use crate::auth::{encode_token, get_public_jwk, Jwks};
+use crate::user_repo::{DynUserRepo, UserRepoImpl};
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::from_extractor;
@@ -17,11 +19,20 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 use crate::middleware::AuthorizationMiddleware;
-use crate::view_models::{AccountAuthView, AccountDetailView};
+use crate::view_models::{AccountAuthView, AccountDetailView, User};
+
+#[derive(Clone)]
+struct AppState {
+    pub account_repo: DynAccountRepo,
+    pub user_repo: DynUserRepo,
+}
 
 #[tokio::main]
 async fn main() {
-    let account_repo = Arc::new(AccountRepoImpl) as DynAccountRepo;
+    let app_state = AppState {
+        account_repo: Arc::new(AccountRepoImpl) as DynAccountRepo,
+        user_repo: Arc::new(UserRepoImpl) as DynUserRepo,
+    };
 
     let jwks = Jwks(vec![get_public_jwk()]);
 
@@ -36,7 +47,7 @@ async fn main() {
         .route("/new", get(create_account))
         .route("/login", post(login))
         .layer(Extension(jwks))
-        .with_state(account_repo);
+        .with_state(app_state);
 
     let listener = TcpListener::bind("localhost:3000").await.unwrap();
 
@@ -50,9 +61,9 @@ fn serve_frontend() -> Router {
 
 async fn account(
     Extension(claims): Extension<auth::Authorized>,
-    State(account_repo): State<DynAccountRepo>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let acc = account_repo.create().await.unwrap();
+    let acc = state.account_repo.create().await.unwrap();
     let num = claims.0.card_num;
     if acc.card_number == num {
         Json(AccountDetailView::from(acc)).into_response()
@@ -61,17 +72,15 @@ async fn account(
     }
 }
 
-async fn login(
-    State(account_repo): State<DynAccountRepo>,
-    Json(request): Json<AccountAuthView>,
-) -> impl IntoResponse {
-    let acc = account_repo
-        .find(request.card_number.clone())
+async fn login(State(state): State<AppState>, Json(request): Json<User>) -> impl IntoResponse {
+    let user = state
+        .user_repo
+        .find(request.username.clone())
         .await
         .unwrap();
 
-    if acc.pin == request.pin {
-        let token = encode_token(request.card_number.clone());
+    if user.password == request.password {
+        let token = encode_token(request.username.clone());
         let mut headers = HeaderMap::new();
         headers.insert(
             axum::http::header::AUTHORIZATION,
@@ -83,8 +92,8 @@ async fn login(
     }
 }
 
-async fn create_account(State(account_repo): State<DynAccountRepo>) -> impl IntoResponse {
-    let acc = account_repo.create().await.unwrap();
+async fn create_account(State(state): State<AppState>) -> impl IntoResponse {
+    let acc = state.account_repo.create().await.unwrap();
     let view: AccountAuthView = AccountAuthView::from(acc);
     Json(view)
 }
