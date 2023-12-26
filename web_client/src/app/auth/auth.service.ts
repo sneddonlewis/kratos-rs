@@ -15,11 +15,11 @@ export class AuthService {
     return this.client.get<Account>(url)
   }
 
-  login(card_number: string, pin: string): Observable<HttpResponse<unknown>> {
+  login(username: string, password: string): Observable<HttpResponse<unknown>> {
     const url = "/login";
     const body = {
-      card_number,
-      pin
+      username,
+      password
     }
     return this.client.post(url, body, { observe: 'response' })
   }
