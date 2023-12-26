@@ -48,7 +48,7 @@ async fn main() {
         .layer(Extension(jwks))
         .with_state(app_state);
 
-    let listener = TcpListener::bind("localhost:3000").await.unwrap();
+    let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
     println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, router).await.unwrap();
