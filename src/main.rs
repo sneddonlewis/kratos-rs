@@ -1,25 +1,24 @@
-mod account_repo;
 mod auth;
 mod middleware;
-mod user_repo;
+mod repo;
 mod view_models;
 
-use crate::account_repo::{AccountRepoImpl, DynAccountRepo};
 use crate::auth::{encode_token, get_public_jwk, Jwks};
-use crate::user_repo::{DynUserRepo, UserRepoImpl};
 use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::from_extractor;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
+use repo::account_repo::{AccountRepoImpl, DynAccountRepo};
+use repo::user_repo::{DynUserRepo, UserRepoImpl};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 use crate::middleware::AuthorizationMiddleware;
-use crate::view_models::{AccountAuthView, AccountDetailView, User};
+use crate::view_models::{AccountDetailView, User};
 
 #[derive(Clone)]
 struct AppState {
@@ -55,7 +54,7 @@ async fn main() {
     axum::serve(listener, router).await.unwrap();
 }
 
-fn serve_frontend() -> Router {
+fn serve_frontend(router: Router) -> Router {
     Router::new().nest_service("/", ServeDir::new("web_client/dist/web_client/browser/"))
 }
 
@@ -93,7 +92,6 @@ async fn login(State(state): State<AppState>, Json(request): Json<User>) -> impl
 }
 
 async fn create_account(State(state): State<AppState>) -> impl IntoResponse {
-    let acc = state.account_repo.create().await.unwrap();
-    let view: AccountAuthView = AccountAuthView::from(acc);
-    Json(view)
+    let acc = state.user_repo.create().await.unwrap();
+    Json(acc)
 }
