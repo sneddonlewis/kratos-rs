@@ -25,7 +25,7 @@ export class AuthService {
   }
 
   accountDetail(): Observable<AccountDetail> {
-    const url = "/account";
+    const url = "/api/account";
     return this.client.get<AccountDetail>(url)
   }
 }

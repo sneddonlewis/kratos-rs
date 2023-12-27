@@ -8,7 +8,7 @@ use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::from_extractor;
 use axum::response::IntoResponse;
-use axum::routing::{get, get_service, post};
+use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use repo::account_repo::{AccountRepoImpl, DynAccountRepo};
 use repo::user_repo::{DynUserRepo, UserRepoImpl};
@@ -47,11 +47,11 @@ async fn main() {
         .layer(cors_middleware)
         .route("/api/account", get(account))
         .route_layer(from_extractor::<AuthorizationMiddleware>())
-        .nest_service("/assets", ServeDir::new(frontend_assets_dir))
         .route("/api/new", get(create_account))
         .route("/api/login", post(login))
         .layer(Extension(jwks))
         .with_state(app_state)
+        .nest_service("/", serve_dir.clone())
         .fallback_service(serve_dir);
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -66,11 +66,7 @@ async fn account(
 ) -> impl IntoResponse {
     let acc = state.account_repo.create().await.unwrap();
     let num = claims.0.card_num;
-    if acc.card_number == num {
-        Json(AccountDetailView::from(acc)).into_response()
-    } else {
-        (StatusCode::UNAUTHORIZED).into_response()
-    }
+    Json(AccountDetailView::from(acc)).into_response()
 }
 
 async fn login(State(state): State<AppState>, Json(request): Json<User>) -> impl IntoResponse {
