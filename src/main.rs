@@ -8,14 +8,14 @@ use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::from_extractor;
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::{any_service, get, get_service, post};
 use axum::{Extension, Json, Router};
 use repo::account_repo::{AccountRepoImpl, DynAccountRepo};
 use repo::user_repo::{DynUserRepo, UserRepoImpl};
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tower_http::cors::CorsLayer;
-use tower_http::services::ServeDir;
+use tower_http::cors::{any, CorsLayer};
+use tower_http::services::{ServeDir, ServeFile};
 
 use crate::middleware::AuthorizationMiddleware;
 use crate::view_models::{AccountDetailView, User};
@@ -40,11 +40,11 @@ async fn main() {
 
     let router = Router::new()
         .layer(cors_middleware)
-        .route("/account", get(account))
+        .route("/api/account", get(account))
         .route_layer(from_extractor::<AuthorizationMiddleware>())
         .nest_service("/", ServeDir::new("web_client/dist/web_client/browser/"))
-        .route("/new", get(create_account))
-        .route("/login", post(login))
+        .route("/api/new", get(create_account))
+        .route("/api/login", post(login))
         .layer(Extension(jwks))
         .with_state(app_state);
 
@@ -52,10 +52,6 @@ async fn main() {
 
     println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, router).await.unwrap();
-}
-
-fn serve_frontend(router: Router) -> Router {
-    Router::new().nest_service("/", ServeDir::new("web_client/dist/web_client/browser/"))
 }
 
 async fn account(

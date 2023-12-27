@@ -11,12 +11,12 @@ export class AuthService {
   constructor(private client: HttpClient) { }
 
   createAccount(): Observable<Account> {
-    const url = "/new";
+    const url = "/api/new";
     return this.client.get<Account>(url)
   }
 
   login(username: string, password: string): Observable<HttpResponse<unknown>> {
-    const url = "/login";
+    const url = "/api/login";
     const body = {
       username,
       password

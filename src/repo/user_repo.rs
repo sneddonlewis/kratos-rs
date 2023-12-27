@@ -17,7 +17,7 @@ pub struct UserRepoImpl;
 
 #[async_trait]
 impl UserRepo for UserRepoImpl {
-    async fn find(&self, card_num: String) -> Result<User, UserRepoError> {
+    async fn find(&self, _card_num: String) -> Result<User, UserRepoError> {
         Ok(User {
             username: "root".to_string(),
             password: "root".to_string(),
