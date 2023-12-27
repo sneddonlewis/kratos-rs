@@ -1,6 +1,6 @@
 use axum_extra::headers::authorization::Bearer;
-use base64::Engine;
 use base64::engine::general_purpose;
+use base64::Engine;
 use chrono::{serde::ts_seconds, DateTime, Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Validation};
 use openssl::rsa::Rsa;
@@ -37,15 +37,8 @@ pub fn find_jwk<'a>(token: &'_ str, jwks: &'a [Jwk]) -> Option<&'a Jwk> {
 pub fn jwt_decode(token: &str, jwk: &Jwk) -> Result<Claims, String> {
     let validation = Validation::new(ALGORITHM);
 
-    let decode_key = &DecodingKey::from_rsa_components(
-        &jwk.modulus_value,
-        &jwk.exponent,
-    ).unwrap();
-    let decoded = jsonwebtoken::decode::<Claims>(
-        token,
-        decode_key,
-        &validation,
-    ).unwrap();
+    let decode_key = &DecodingKey::from_rsa_components(&jwk.modulus_value, &jwk.exponent).unwrap();
+    let decoded = jsonwebtoken::decode::<Claims>(token, decode_key, &validation).unwrap();
 
     Ok(decoded.claims)
 }
@@ -54,10 +47,10 @@ pub fn encode_token(account_number: String) -> String {
     jwt_encode(account_number.as_str(), crate::auth::KEY_PRIV.as_bytes()).unwrap()
 }
 
-fn jwt_encode(acc: &str, private_key: &[u8]) -> Result<String, ()> {
+fn jwt_encode(username: &str, private_key: &[u8]) -> Result<String, ()> {
     let exp = Utc::now() + Duration::weeks(52);
     let claims = Claims {
-        card_num: acc.to_string(),
+        username: username.to_string(),
         exp,
     };
 
@@ -65,11 +58,7 @@ fn jwt_encode(acc: &str, private_key: &[u8]) -> Result<String, ()> {
     header.kid = Some(KID.to_string());
 
     let encoding_key = &EncodingKey::from_rsa_pem(private_key).unwrap();
-    let token = jsonwebtoken::encode(
-        &header,
-        &claims,
-        encoding_key,
-    ).unwrap();
+    let token = jsonwebtoken::encode(&header, &claims, encoding_key).unwrap();
     Ok(token)
 }
 
@@ -103,11 +92,10 @@ pub struct Authorized(pub Claims);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
-    pub card_num: String,
+    pub username: String,
     #[serde(with = "ts_seconds")]
     pub exp: DateTime<Utc>,
 }
-
 
 const KEY_PUB: &str = r#"-----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAzdue26JnkXQ2x/f6TpEm

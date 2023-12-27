@@ -14,7 +14,7 @@ use repo::account_repo::{AccountRepoImpl, DynAccountRepo};
 use repo::user_repo::{DynUserRepo, UserRepoImpl};
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tower_http::cors::CorsLayer;
+// use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
 use crate::middleware::AuthorizationMiddleware;
@@ -36,7 +36,7 @@ async fn main() {
     let jwks = Jwks(vec![get_public_jwk()]);
 
     // Define CORS middleware
-    let cors_middleware = CorsLayer::very_permissive();
+    // let cors_middleware = CorsLayer::very_permissive();
 
     let frontend_assets_dir = "web_client/dist/web_client/browser/";
     let index_html = "web_client/dist/web_client/browser/index.html";
@@ -44,7 +44,7 @@ async fn main() {
         ServeDir::new(frontend_assets_dir).not_found_service(ServeFile::new(index_html));
 
     let router = Router::new()
-        .layer(cors_middleware)
+        // .layer(cors_middleware)
         .route("/api/account", get(account))
         .route_layer(from_extractor::<AuthorizationMiddleware>())
         .route("/api/new", get(create_account))
@@ -65,7 +65,8 @@ async fn account(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let acc = state.account_repo.create().await.unwrap();
-    let num = claims.0.card_num;
+    let name_claim = claims.0.username;
+    println!("claim username: {:?}", name_claim);
     Json(AccountDetailView::from(acc)).into_response()
 }
 
